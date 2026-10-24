@@ -1,0 +1,11 @@
+# Schedule for the VPS (times are New York time - setup_vps.sh sets the clock to New York).
+# Install with:   crontab deploy/crontab.txt      Check with:   crontab -l
+# Format:  minute hour day-of-month month day-of-week  command
+#
+# If your Linux username is not "trader", change /home/trader below.
+
+# Every Monday at 10:45am New York (75 minutes after the US market opens): rebalance
+45 10 * * 1  cd /home/trader/quant_trader && .venv/bin/python run_live.py --execute >> logs/cron_live.log 2>&1
+
+# 1st of every month at 6:00am: download fresh data, re-run the research and retrain the model
+0 6 1 * *    cd /home/trader/quant_trader && .venv/bin/python run_research.py --refresh >> logs/cron_research.log 2>&1

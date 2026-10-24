@@ -1,0 +1,21 @@
+# private keys - never upload these
+.env
+.env.*
+!.env.example
+
+# Python's private space and caches
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# downloaded data, logs, reports and trained models (made fresh by the program)
+data/*
+!data/.gitkeep
+logs/*
+!logs/.gitkeep
+reports/*
+!reports/.gitkeep
+models/*
+!models/.gitkeep
+nohup.out

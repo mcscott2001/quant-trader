@@ -1,0 +1,106 @@
+# =====================================================================
+#  QUANT TRADER SETTINGS
+#  This is the only file you normally need to edit.
+#  Lines starting with "#" are comments and are ignored by the program.
+# =====================================================================
+
+# ---------------------------------------------------------------------
+# DATA: where the price history comes from
+# ---------------------------------------------------------------------
+data:
+  # yfinance = free Yahoo Finance data (no account needed)
+  #            (Trading 212's API has no price history, so research uses Yahoo)
+  # demo     = made-up practice data, so you can test that everything
+  #            installed correctly without any internet data
+  source: yfinance
+  start_date: "2014-01-01"     # how far back to download
+  benchmark: SPY               # what we compare ourselves against (S&P 500 ETF)
+  cache_dir: data              # downloaded prices are saved here
+  cache_max_age_hours: 12      # re-download if the saved copy is older than this
+
+# ---------------------------------------------------------------------
+# STEP 1 - UNIVERSE SELECTION: which stocks are we allowed to trade?
+# ---------------------------------------------------------------------
+universe:
+  # The "menu" of candidate stocks. Large, liquid US companies.
+  # Each day, only the ones that pass the filters below are used.
+  candidates: [
+    AAPL, MSFT, AMZN, GOOGL, META, NVDA, AVGO, ORCL, CSCO, ADBE,
+    CRM, INTC, AMD, QCOM, TXN, IBM, JPM, BAC, WFC, GS,
+    MS, C, BLK, AXP, V, MA, UNH, JNJ, LLY, MRK,
+    ABBV, PFE, TMO, ABT, DHR, AMGN, GILD, PG, KO, PEP,
+    COST, WMT, HD, MCD, SBUX, NKE, DIS, NFLX, CMCSA, T,
+    VZ, XOM, CVX, CAT, DE, HON, GE, UPS, LMT, RTX,
+    BA, MMM, LIN, NEE, DUK, SO
+  ]
+  min_price: 5                 # ignore stocks under $5
+  min_dollar_volume: 20000000  # must trade at least $20m a day (median of last 60 days)
+  min_history_days: 260        # need about a year of history first
+
+# ---------------------------------------------------------------------
+# STEP 2 - FEATURE ENGINEERING
+# ---------------------------------------------------------------------
+features:
+  rank_normalise: true         # turn each feature into a 0-1 rank across stocks each day
+
+# What are we trying to predict?
+target:
+  horizon_days: 5              # will this stock beat the others over the next 5 trading days?
+
+# ---------------------------------------------------------------------
+# STEP 3 - TIME SERIES CROSS VALIDATION (walk-forward testing)
+# ---------------------------------------------------------------------
+cv:
+  min_train_days: 756          # first model trains on ~3 years
+  test_block_days: 126         # then predicts the next ~6 months, retrains, repeats
+  holdout_days: 252            # the final ~1 year is kept back as a "final exam"
+
+# ---------------------------------------------------------------------
+# STEP 4 - MACHINE LEARNING MODELS to compare
+# ---------------------------------------------------------------------
+models:
+  candidates: [logistic, random_forest, gradient_boosting]
+  random_state: 42
+
+# ---------------------------------------------------------------------
+# STEP 6 - SIGNALS AND PORTFOLIO RULES
+# ---------------------------------------------------------------------
+portfolio:
+  rebalance_every_days: 5      # trade once a week
+  top_n: 10                    # hold the 10 best-scoring stocks
+  long_short: false            # false = only buy stocks (recommended to start)
+  weighting: equal             # equal | inverse_vol (calmer stocks get more money)
+  max_weight: 0.15             # never put more than 15% in one stock
+  hold_buffer: 2.0             # keep a stock we own while it stays in the top 2 x top_n (cuts trading costs)
+  mean_reversion_trend_filter: true   # only buy dips in stocks above their 200-day average
+
+# ---------------------------------------------------------------------
+# STEP 7 - BACKTEST
+# ---------------------------------------------------------------------
+backtest:
+  initial_capital: 100000
+  transaction_cost_bps: 20     # cost per trade in basis points (20 = 0.20%):
+                               #   0.15% Trading 212 currency conversion fee (GBP <-> USD)
+                               #   + about 0.05% for the bid/ask spread and slippage
+  execution_lag_days: 1        # trade the day AFTER the signal (avoids cheating)
+  cash_rate: 0.0               # yearly interest earned on uninvested cash
+
+# ---------------------------------------------------------------------
+# LIVE / DEMO TRADING with Trading 212
+# Your API key and secret go in the file ".env" (copy .env.example), never here.
+# ---------------------------------------------------------------------
+live:
+  strategy: ml_combined        # ml_combined | momentum | mean_reversion
+  mode: demo                   # demo = Trading 212 Practice account (pretend money)
+                               # live = your real Invest (or Stocks ISA) account
+  allow_live_account: false    # SAFETY SWITCH: must be true before mode: live will trade
+  data_source: yfinance        # where to get the latest prices for today's signal
+  cash_buffer: 0.02            # keep 2% of the account in cash
+  max_capital: 0               # most money the robot may invest, in your account currency
+                               # (e.g. 5000 = GBP 5,000). 0 = the whole account
+  min_trade_value: 20          # skip top-ups/trims smaller than this (account currency)
+  quantity_decimals: 2         # fractional shares: decimal places to try first (0 = whole shares only)
+  order_spacing_seconds: 1.5   # pause between orders (Trading 212 allows 50 orders a minute)
+  wait_for_fills_seconds: 180  # how long to wait for sells to fill before buying
+  only_when_market_open: true  # refuse to --execute outside US market hours
+  max_model_age_days: 45       # warn if the model has not been retrained recently
